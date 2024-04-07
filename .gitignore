@@ -1,0 +1,6 @@
+.DS_Store
+MyPyTorchModel_torchviz.png
+lightning_logs/
+CITATION.cff
+logs/
+README.md

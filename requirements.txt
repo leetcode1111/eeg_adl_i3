@@ -1,0 +1,7 @@
+mne 
+lightning 
+torchmetrics
+cv2-plt-imshow
+torchviz
+notebook==6.4.12
+jupyter_contrib_nbextensions
