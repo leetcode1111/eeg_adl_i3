@@ -5,7 +5,7 @@
 
 # ## **Important Libraries**
 
-# In[1]:
+# In[ ]:
 
 
 import mne
@@ -47,7 +47,7 @@ warnings.filterwarnings("ignore")
 
 # ## **Dataset**
 
-# In[2]:
+# In[ ]:
 
 
 global_path = ''
@@ -67,7 +67,7 @@ for dir in CLASSES:
     print(f'{dir} has {len(all_files[dir])} files')
 
 
-# In[3]:
+# In[ ]:
 
 
 def read_one_subject_file(file_path, id): # return data in milli volts (input data is in micro volts)
@@ -108,21 +108,35 @@ print(np.min(eeg_data), np.max(eeg_data)) # In Old Implimentation ((3377, 64, 49
 # print(np.min(eeg_data), np.max(eeg_data)) # In Old Implimentation ((3377, 64, 497), -0.698, 1)
 
 
-# In[4]:
+# In[ ]:
 
 
-def get_data():
+def get_data(type):
+    if type not in ['train', 'valid', 'test']:  
+        raise ValueError('type should be either train, valid or test')
+    
     dataset = list()
     labels = list()
     c=0
     for dir in CLASSES:
         for file_name in all_files[dir]:
             c+=1
+            num = int(file_name.split('-')[0])
             file_path = os.path.join(dir, file_name)
             id = CLASSES_ID[dir]
             eeg_data, one_action_labels = read_one_subject_file(file_path, id)
-            dataset.append(eeg_data)
-            labels.append(one_action_labels)
+            if(type == 'train' and  num < 88):
+                dataset.append(eeg_data)
+                labels.append(one_action_labels)
+
+            elif(type == 'valid' and  num >= 88 and num<98):
+                dataset.append(eeg_data)
+                labels.append(one_action_labels)
+
+            elif(type == 'test' and num >= 98):
+                dataset.append(eeg_data)
+                labels.append(one_action_labels)
+
 
     final_data = np.vstack(dataset)
     final_data = np.vstack(dataset)
@@ -152,7 +166,7 @@ def get_data():
 #     return final_data, final_labels
 
 
-# In[5]:
+# In[ ]:
 
 
 import numpy as np
@@ -165,82 +179,81 @@ print(array_3d)
 print(array_1d)
 
 
-# In[6]:
+# In[ ]:
 
 
-X, y = get_data()
+x_train, y_train = get_data('train')
+x_valid, y_valid = get_data('valid')
+x_test, y_test = get_data('test')
 
-
-# In[7]:
-
-
-# Assuming train_data and train_labels are your input data and corresponding labels
-train_data_shape = X.shape
-
-# Generate indices for shuffling
-np.random.seed(seed_value)
-
-indices = np.arange(train_data_shape[0])
-np.random.shuffle(indices)
-
-# Shuffle train_data and train_labels using the same indices
-X = X[indices]
-y = y[indices]
+# join x_train, x_valid, x_test
+x = np.concatenate((x_train, x_valid), axis=0)
+x = np.concatenate((x, x_test), axis=0)
 
 
 # In[ ]:
 
 
-print(f'Train Data Shape: {X.shape}, Train Labels Shape: {y.shape}')
-print(f'Min and Max of train Data ({np.min(X)}, {np.max(X)})')
-print(f'Min and Max of labels ({np.min(y)}, {np.max(y)})')
+# # Assuming train_data and train_labels are your input data and corresponding labels
+# train_data_shape = X.shape
+
+# # Generate indices for shuffling
+# np.random.seed(seed_value)
+
+# indices = np.arange(train_data_shape[0])
+# np.random.shuffle(indices)
+
+# # Shuffle train_data and train_labels using the same indices
+# X = X[indices]
+# y = y[indices]
 
 
 # In[ ]:
 
 
-for i in range(len(y)):
-    print(y[i])
+def dataset_info(X, y):
+    print(f'Data Shape: {X.shape}, Labels Shape: {y.shape}')
+    print(f'Min and Max of Data ({np.min(X)}, {np.max(X)})')
+    print(f'Min and Max of labels ({np.min(y)}, {np.max(y)})')
 
-# 1
-# 1
-# 3
-# 0
-# 3
-# 1
-# 3
+
+dataset_info(x_train, y_train)
+dataset_info(x_valid, y_valid)
+dataset_info(x_test, y_test)
+
+
+# In[ ]:
+
+
+for i in range(len(y_train)):
+    print(y_train[i])
 
 
 # In[ ]:
 
 
 class EEGDataset(data.Dataset):
-    def __init__(self, x, y=None, inference=False):
+    def __init__(self, x, x_train, x_valid, x_test, y_train=None, y_valid=None, y_test=None, inference=False):
         super().__init__()
 
         N_SAMPLE = x.shape[0]
-        # val_idx = int(0.9 * N_SAMPLE)
-        # train_idx = int(0.81 * N_SAMPLE)
         
-        train_idx = int(0.5 * N_SAMPLE)
-        val_idx = int(0.75 * N_SAMPLE)
-
         if not inference:
             self.train_ds = {
-                'x': x[:train_idx],
-                'y': y[:train_idx],
+                'x': x_train,
+                'y': y_train,
             }
             # print(self.train_ds['x'].shape)
             
             self.val_ds = {
-                'x': x[train_idx:val_idx],
-                'y': y[train_idx:val_idx],
+                'x': x_valid,
+                'y': y_valid,
             }
             # print(self.val_ds['x'].shape)
             
             self.test_ds = {
-                'x': x[val_idx:],
-                'y': y[val_idx:],
+                'x': x_test,
+                'y': y_test,
             }
             # print(self.test_ds['x'].shape)
         else:
@@ -292,7 +305,7 @@ class EEGDataset(data.Dataset):
 # In[ ]:
 
 
-eeg_dataset = EEGDataset(x=X, y=y)
+eeg_dataset = EEGDataset(x=x, x_train=x_train, x_valid=x_valid, x_test=x_test, y_train=y_train, y_valid=y_valid, y_test=y_test)
 
 
 # In[ ]:
@@ -729,7 +742,7 @@ print('After', model.device)
 # In[ ]:
 
 
-# trainer.fit(model)
+trainer.fit(model)
 
 
 # ## **Testing**
@@ -791,7 +804,7 @@ trainer.test(model=model ,ckpt_path="4_class/epoch=99-step=14595.ckpt")
 
 # ### Saving Notebook as a script
 
-# In[ ]:
+# In[28]:
 
 
 from IPython import get_ipython
