@@ -51,7 +51,9 @@ warnings.filterwarnings("ignore")
 
 
 global_path = ''
-dir_path_to_save_data = '/Users/yashgupta/Desktop/eeg/implimentations/ADL/I2/processed_data_original'
+dir_path_to_save_data = 'processed_data_original'
+seed_value = 42
+
 
 EEG_CHANNEL = 64
 # CLASSES = ['left_fist', 'right_fist', 'baseline_open', 'both_feet', 'both_fist']
@@ -172,12 +174,44 @@ X, y = get_data()
 # In[7]:
 
 
+# Assuming train_data and train_labels are your input data and corresponding labels
+train_data_shape = X.shape
+
+# Generate indices for shuffling
+np.random.seed(seed_value)
+
+indices = np.arange(train_data_shape[0])
+np.random.shuffle(indices)
+
+# Shuffle train_data and train_labels using the same indices
+X = X[indices]
+y = y[indices]
+
+
+# In[ ]:
+
+
 print(f'Train Data Shape: {X.shape}, Train Labels Shape: {y.shape}')
 print(f'Min and Max of train Data ({np.min(X)}, {np.max(X)})')
 print(f'Min and Max of labels ({np.min(y)}, {np.max(y)})')
 
 
-# In[8]:
+# In[ ]:
+
+
+for i in range(len(y)):
+    print(y[i])
+
+# 1
+# 1
+# 3
+# 0
+# 3
+# 1
+# 3
+
+
+# In[ ]:
 
 
 class EEGDataset(data.Dataset):
@@ -185,8 +219,11 @@ class EEGDataset(data.Dataset):
         super().__init__()
 
         N_SAMPLE = x.shape[0]
-        val_idx = int(0.9 * N_SAMPLE)
-        train_idx = int(0.81 * N_SAMPLE)
+        # val_idx = int(0.9 * N_SAMPLE)
+        # train_idx = int(0.81 * N_SAMPLE)
+        
+        train_idx = int(0.5 * N_SAMPLE)
+        val_idx = int(0.75 * N_SAMPLE)
 
         if not inference:
             self.train_ds = {
@@ -252,13 +289,13 @@ class EEGDataset(data.Dataset):
             raise TypeError("Unknown type of split!")
 
 
-# In[9]:
+# In[ ]:
 
 
 eeg_dataset = EEGDataset(x=X, y=y)
 
 
-# In[10]:
+# In[ ]:
 
 
 # plt.plot(X[18:21, 0, :].T)
@@ -273,7 +310,7 @@ eeg_dataset = EEGDataset(x=X, y=y)
 
 # ### **Utils**
 
-# In[11]:
+# In[ ]:
 
 
 class AvgMeter(object):
@@ -298,7 +335,7 @@ class AvgMeter(object):
 
 # ### **Wrapper**
 
-# In[12]:
+# In[ ]:
 
 
 class ModelWrapper(L.LightningModule):
@@ -416,9 +453,8 @@ class ModelWrapper(L.LightningModule):
         )
 
     def on_train_end(self):
-        pass
-        # Loss # change
-        loss_img_file = "/content/loss_plot.png"
+        # Loss 
+        loss_img_file = "content/loss_plot.png"
         plt.plot(self.train_loss, color = 'r', label='train')
         plt.plot(self.val_loss, color = 'b', label='validation')
         plt.title("Loss Curves")
@@ -430,9 +466,10 @@ class ModelWrapper(L.LightningModule):
         plt.clf()
         img = cv2.imread(loss_img_file)
         cv2_imshow(img)
+        plt.show()
 
         # Accuracy
-        acc_img_file = "/content/acc_plot.png"
+        acc_img_file = "content/acc_plot.png"
         plt.plot(self.train_acc, color = 'r', label='train')
         plt.plot(self.val_acc, color = 'b', label='validation')
         plt.title("Accuracy Curves")
@@ -444,6 +481,7 @@ class ModelWrapper(L.LightningModule):
         plt.clf()
         img = cv2.imread(acc_img_file)
         cv2_imshow(img)
+        plt.show()
 
     def train_dataloader(self):
         return data.DataLoader(
@@ -489,7 +527,7 @@ class ModelWrapper(L.LightningModule):
 
 # ### **EEG Classification Model**
 
-# In[13]:
+# In[ ]:
 
 
 class PositionalEncoding(nn.Module):
@@ -512,7 +550,7 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-# In[14]:
+# In[ ]:
 
 
 class TransformerBlock(nn.Module):
@@ -547,7 +585,7 @@ class TransformerBlock(nn.Module):
         return x
 
 
-# In[15]:
+# In[ ]:
 
 
 class EEGClassificationModel(nn.Module):
@@ -591,14 +629,14 @@ class EEGClassificationModel(nn.Module):
         return x
 
 
-# In[16]:
+# In[ ]:
 
 
 MODEL_NAME = "EEGClassificationModel"
 model = EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125)
 
 
-# In[17]:
+# In[ ]:
 
 
 # import torch
@@ -624,11 +662,11 @@ model = EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125)
 
 # ## **Training**
 
-# In[18]:
+# In[ ]:
 
 
 MAX_EPOCH = 100
-BATCH_SIZE = 10
+BATCH_SIZE = 32
 LR = 5e-4
 CHECKPOINT_DIR = os.getcwd()
 # SEED = int(np.random.randint(2147483647))
@@ -641,14 +679,14 @@ model = ModelWrapper(model, eeg_dataset, BATCH_SIZE, LR, MAX_EPOCH)
 get_ipython().system('rm -rf logs/')
 
 
-# In[19]:
+# In[ ]:
 
 
 # %reload_ext tensorboard
 # %tensorboard --logdir=logs/lightning_logs/
 
 
-# In[20]:
+# In[ ]:
 
 
 tensorboardlogger = TensorBoardLogger(save_dir="logs/")
@@ -659,9 +697,10 @@ checkpoint = ModelCheckpoint(
     dirpath=CHECKPOINT_DIR,
     mode='max',
 )
-early_stopping = EarlyStopping(
-    monitor="val_acc", min_delta=0.00, patience=3, verbose=False, mode="max"
-)
+
+# early_stopping = EarlyStopping(
+#     monitor="val_acc", min_delta=0.00, patience=3, verbose=False, mode="max"
+# )
 
 
 seed_everything(SEED, workers=True)
@@ -672,12 +711,22 @@ trainer = Trainer(
     devices=1,
     max_epochs=MAX_EPOCH,
     logger=[tensorboardlogger, csvlogger],
-    callbacks=[lr_monitor, checkpoint, early_stopping],
+    # callbacks=[lr_monitor, checkpoint, early_stopping],
+    callbacks=[lr_monitor, checkpoint], # exp
     log_every_n_steps=5,
 )
 
 
-# In[21]:
+# In[ ]:
+
+
+print('Before', model.device)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+print('After', model.device)
+
+
+# In[ ]:
 
 
 # trainer.fit(model)
@@ -685,11 +734,12 @@ trainer = Trainer(
 
 # ## **Testing**
 
-# In[22]:
+# In[ ]:
 
 
 # trainer.test(ckpt_path="EEGClassificationModel_best.ckpt")
-trainer.test(model=model ,ckpt_path="epoch=7-step=6008.ckpt")
+trainer.test(model=model ,ckpt_path="4_class/epoch=99-step=14595.ckpt")
+
 
 # os.rename(
 #     checkpoint.best_model_path,
@@ -699,7 +749,7 @@ trainer.test(model=model ,ckpt_path="epoch=7-step=6008.ckpt")
 
 # ## **Inference**
 
-# In[23]:
+# In[ ]:
 
 
 # for _ in range(5):
@@ -741,7 +791,7 @@ trainer.test(model=model ,ckpt_path="epoch=7-step=6008.ckpt")
 
 # ### Saving Notebook as a script
 
-# In[24]:
+# In[ ]:
 
 
 from IPython import get_ipython
