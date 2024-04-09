@@ -9,17 +9,19 @@
 
 
 import mne
-from mne.io import concatenate_raws
+# from mne.io import concatenate_raws
 
 import os
-import re
-import io
+# import re
+# import io
 import cv2
-import random
-import string
+# import random
+# import string
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import itertools
 
 # from google.colab.patches import cv2_imshow
 from cv2_plt_imshow import cv2_plt_imshow as cv2_imshow
@@ -39,10 +41,11 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from torchmetrics.classification import Accuracy
 
-get_ipython().run_line_magic('matplotlib', 'inline')
+# get_ipython().run_line_magic('matplotlib', 'inline')
 plt.rcParams['axes.facecolor'] = 'lightgray'
 
 warnings.filterwarnings("ignore")
+print(torch.__version__)
 
 
 # ## **Dataset**
@@ -74,6 +77,7 @@ def read_one_subject_file(file_path, id): # return data in milli volts (input da
     epochs_eeg = mne.read_epochs(os.path.join(dir_path_to_save_data, file_path))
     # print(np.shape(temp))
     eeg_data = epochs_eeg.get_data(copy=False) * 1e-3
+    eeg_data = np.array(eeg_data, dtype=np.float32) 
     
     # print(np.shape(eeg_data))
 
@@ -85,27 +89,7 @@ def read_one_subject_file(file_path, id): # return data in milli volts (input da
 eeg_data, one_action_labels = read_one_subject_file(os.path.join(CLASSES[0], all_files[CLASSES[0]][0]), CLASSES_ID[CLASSES[0]])
 print(np.shape(eeg_data), np.shape(one_action_labels))
 print(np.min(eeg_data), np.max(eeg_data)) # In Old Implimentation ((3377, 64, 497), -0.698, 1)
-
-
-
-
-# def read_one_subject_file(file_path, id): # return data in milli volts (input data is in micro volts)
-#     epochs_eeg = mne.read_epochs(os.path.join(dir_path_to_save_data, file_path))
-#     # print(np.shape(temp))
-#     eeg_data = epochs_eeg.get_data(copy=False) * 1e-3
-    
-#     # print(np.shape(eeg_data))
-
-#     seconds = np.shape(eeg_data)[0]
-#     one_action_labels = np.zeros(no_of_classes, dtype=float) # classes (persons)
-#     one_action_labels[id] = 1
-#     one_action_labels = np.tile(one_action_labels, (seconds,1))
-#     one_action_labels = np.expand_dims(one_action_labels, axis=1)
-#     return eeg_data, one_action_labels
-
-# eeg_data, one_action_labels = read_one_subject_file(os.path.join(CLASSES[0], all_files[CLASSES[0]][0]), CLASSES_ID[CLASSES[0]])
-# print(np.shape(eeg_data), np.shape(one_action_labels))
-# print(np.min(eeg_data), np.max(eeg_data)) # In Old Implimentation ((3377, 64, 497), -0.698, 1)
+eeg_data.dtype
 
 
 # In[ ]:
@@ -144,26 +128,6 @@ def get_data(type):
 
     print(c)
     return final_data, final_labels
-
-
-# def get_data():
-#     dataset = list()
-#     labels = list()
-#     c=0
-#     for dir in CLASSES:
-#         for file_name in all_files[dir]:
-#             c+=1
-#             file_path = os.path.join(dir, file_name)
-#             id = CLASSES_ID[dir]
-#             eeg_data, one_action_labels = read_one_subject_file(file_path, id)
-#             dataset.append(eeg_data)
-#             labels.append(one_action_labels)
-
-#     final_data = np.vstack(dataset)
-#     final_data = np.vstack(dataset)
-#     final_labels = np.squeeze(np.vstack(labels))
-#     print(c)
-#     return final_data, final_labels
 
 
 # In[ ]:
@@ -225,8 +189,8 @@ dataset_info(x_test, y_test)
 # In[ ]:
 
 
-for i in range(len(y_train)):
-    print(y_train[i])
+# for i in range(len(y_train)):
+#     print(y_train[i])
 
 
 # In[ ]:
@@ -687,9 +651,9 @@ SEED = 141352557
 
 print(f"Random seed: {SEED}")
 
-model = ModelWrapper(model, eeg_dataset, BATCH_SIZE, LR, MAX_EPOCH)
+model_w = ModelWrapper(model, eeg_dataset, BATCH_SIZE, LR, MAX_EPOCH)
 
-get_ipython().system('rm -rf logs/')
+# get_ipython().system('rm -rf logs/')
 
 
 # In[ ]:
@@ -733,16 +697,44 @@ trainer = Trainer(
 # In[ ]:
 
 
-print('Before', model.device)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
-print('After', model.device)
+# print('Before', model_w.device)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# model_w.to(device)
+# print('After', model_w.device)
 
 
 # In[ ]:
 
 
-trainer.fit(model)
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"  # specify which GPU(s) to be used
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,4"  # specify which GPU(s) to be used
+
+
+# In[ ]:
+
+
+# model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=19-step=19020.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
+
+
+# In[ ]:
+
+
+# device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu") ## specify the GPU id's, GPU id's start from 0.
+# device
+
+
+# In[ ]:
+
+
+# model_w= nn.DataParallel(model_w, device_ids = [1, 3])
+# model_w= nn.parallel.DistributedDataParallel(model_w, device_ids = [1, 3])
+# model_w.to(device)
+
+
+# In[ ]:
+
+
+trainer.fit(model_w)
 
 
 # ## **Testing**
@@ -751,7 +743,7 @@ trainer.fit(model)
 
 
 # trainer.test(ckpt_path="EEGClassificationModel_best.ckpt")
-trainer.test(model=model ,ckpt_path="4_class/epoch=99-step=14595.ckpt")
+# trainer.test(model=model_w ,ckpt_path="epoch=6-step=1666.ckpt")
 
 
 # os.rename(
@@ -765,52 +757,125 @@ trainer.test(model=model ,ckpt_path="4_class/epoch=99-step=14595.ckpt")
 # In[ ]:
 
 
-# for _ in range(5):
-#     N_SAMPLE = X.shape[0]
-#     sample_idx = random.randint(0, N_SAMPLE - 1)
-#     sample = X[sample_idx]
+def prediction(sample: np.ndarray, model_wrappr: L.LightningModule) -> list:  #(samples_count, EEG_CHANNEL, Data_Points)
+    if(sample.shape == 2):
+        sample = np.expand_dims(sample, 0)
+    sample  = torch.from_numpy(sample)
+    print(f'Input Size: {np.shape(sample)}') # (samples_count, EEG_CHANNEL, Data_Points)
+    trainer = Trainer()
+    pred = trainer.predict(model=model_wrappr, 
+                        dataloaders=data.DataLoader(
+                        dataset = sample,
+                        batch_size=1,
+                        shuffle=False,
+                    )
+            )
+    pred = torch.tensor(np.array(pred))
+    print(f'Output Size: {np.shape(pred)}') # (samples_count, 1, classes)
+    pred = torch.softmax(pred, dim=2)
+    # print(pred)
+    predicted_class = torch.squeeze(pred.argmax(dim=2))
+    return predicted_class
 
-#     trainer = Trainer()
-#     prediction = trainer.predict(
-#         model=model,
-#         dataloaders=data.DataLoader(
-#             dataset=EEGDataset.inference_dataset(X[sample_idx]),
-#             batch_size=1,
-#             shuffle=False,
-#         ),
-#         # ckpt_path=os.path.join(CHECKPOINT_DIR, f"{MODEL_NAME}_best.ckpt"),
-#         ckpt_path=os.path.join('epoch=7-step=6008.ckpt'),
-#     )[0]
 
-#     print(prediction) 
-#     print(y[sample_idx])
-#     PREDICTED = CLASSES[int(torch.sigmoid(prediction) > 0.5)]
-#     ACTUAL = CLASSES[y[sample_idx]]
-#     print("\n\n\n")
-#     print(f"Imagining {PREDICTED} hand movement!")
-#     print(f"Ground-truth: {ACTUAL}!")
+# In[ ]:
 
-#     plt.plot(sample.T)
-#     plt.title(
-#         f"Exemplar of epoched data, for electrode 0-63\nActual Label : {ACTUAL}\nPredicted Label : {PREDICTED}"
-#     )
-#     plt.ylabel("V")
-#     plt.xlabel("Epoched Sample")
-#     plt.show()
-#     plt.clf()
 
-#     print("\n\n\n")
+eeg_dataset_test = eeg_dataset.split("test")
+print(np.shape(eeg_dataset_test.dataset['x']))
+# eeg_dataset_test.dataset['x']
+# eeg_dataset_test.dataset['y']
+
+y_true = eeg_dataset_test.dataset['y']
+y_pred = prediction(eeg_dataset_test.dataset['x'], model_w)
+
+
+# ## **Confusion Matrix**
+
+# In[ ]:
+
+
+# perital and ocpital channel
+# Note: The following confusion matrix code is a remix of Scikit-Learn's 
+# plot_confusion_matrix function - https://scikit-learn.org/stable/modules/generated/sklearn.metrics.plot_confusion_matrix.html
+# and Made with ML's introductory notebook - https://github.com/GokuMohandas/MadeWithML/blob/main/notebooks/08_Neural_Networks.ipynb
+def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_size=6): 
+  """Makes a labelled confusion matrix comparing predictions and ground truth labels.
+
+  If classes is passed, confusion matrix will be labelled, if not, integer class values
+  will be used.
+
+  Args:
+    y_true: Array of truth labels (must be same shape as y_pred).
+    y_pred: Array of predicted labels (must be same shape as y_true).
+    classes: Array of class labels (e.g. string form). If `None`, integer labels are used.
+    figsize: Size of output figure (default=(10, 10)).
+    text_size: Size of output figure text (default=15).
+  
+  Returns:
+    A labelled confusion matrix plot comparing y_true and y_pred.
+
+  Example usage:
+    make_confusion_matrix(y_true=test_Y, # ground truth test labels
+                          y_pred=y_preds, # predicted labels
+                          classes=class_names, # array of class label names
+                          figsize=(15, 15),
+                          text_size=10)
+  """  
+  # Create the confustion matrix
+  cm = confusion_matrix(y_true, y_pred)
+  cm_norm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis] # normalize it
+  n_classes = cm.shape[0] # find the number of classes we're dealing with
+
+  # Plot the figure and make it pretty
+  fig, ax = plt.subplots(figsize=figsize)
+  cax = ax.matshow(cm, cmap=plt.cm.Blues) # colors will represent how 'correct' a class is, darker == better
+  fig.colorbar(cax)
+
+  # Are there a list of classes?
+  if classes:
+    labels = classes
+  else:
+    labels = np.arange(cm.shape[0])
+  
+  # Label the axes
+  ax.set(title="Confusion Matrix",
+         xlabel="Predicted label",
+         ylabel="True label",
+         xticks=np.arange(n_classes), # create enough axis slots for each class
+         yticks=np.arange(n_classes), 
+         xticklabels=labels, # axes will labeled with class names (if they exist) or ints
+         yticklabels=labels)
+  
+  # Make x-axis labels appear on bottom
+  ax.xaxis.set_label_position("bottom")
+  ax.xaxis.tick_bottom()
+
+  # Set the threshold for different colors
+  threshold = (cm.max() + cm.min()) / 2.
+
+  # Plot the text on each cell
+  for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+    plt.text(j, i, f"{cm[i, j]} ({cm_norm[i, j]*100:.1f}%)",
+             horizontalalignment="center",
+             color="white" if cm[i, j] > threshold else "black",
+             size=text_size)
+
+
+# In[ ]:
+
+
+make_confusion_matrix(y_true, y_pred, classes=CLASSES, figsize=(20, 20), text_size=20)
 
 
 # ### Saving Notebook as a script
 
-# In[28]:
+# In[1]:
 
 
-from IPython import get_ipython
-name = 'final.ipynb'
-get_ipython().system('osascript -e \'tell application "System Events" to keystroke "s" using command down\'')
-get_ipython().system(f'jupyter nbconvert {name} --to python')
+# from IPython import get_ipython
+# name = 'final.ipynb'
+# get_ipython().system(f'jupyter nbconvert {name} --to python')
 
 
 # In[ ]:
