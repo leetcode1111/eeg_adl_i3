@@ -807,11 +807,3 @@ def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_s
 
 # %%
 make_confusion_matrix(y_true, y_pred, classes=CLASSES, figsize=(20, 20), text_size=20)
-
-
-
-
-# %%
-print('1')
-
-print(2)

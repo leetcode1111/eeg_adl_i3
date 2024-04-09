@@ -6,3 +6,4 @@ logs/
 README.md
 temp/
 processed_data_original/
+train.ipynb
