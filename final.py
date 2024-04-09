@@ -5,7 +5,7 @@
 
 # ## **Important Libraries**
 
-# In[ ]:
+# In[1]:
 
 
 import mne
@@ -41,7 +41,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from torchmetrics.classification import Accuracy
 
-# get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().run_line_magic('matplotlib', 'inline')
 plt.rcParams['axes.facecolor'] = 'lightgray'
 
 warnings.filterwarnings("ignore")
@@ -50,7 +50,7 @@ print(torch.__version__)
 
 # ## **Dataset**
 
-# In[ ]:
+# In[2]:
 
 
 global_path = ''
@@ -70,7 +70,7 @@ for dir in CLASSES:
     print(f'{dir} has {len(all_files[dir])} files')
 
 
-# In[ ]:
+# In[3]:
 
 
 def read_one_subject_file(file_path, id): # return data in milli volts (input data is in micro volts)
@@ -92,7 +92,7 @@ print(np.min(eeg_data), np.max(eeg_data)) # In Old Implimentation ((3377, 64, 49
 eeg_data.dtype
 
 
-# In[ ]:
+# In[4]:
 
 
 def get_data(type):
@@ -130,7 +130,7 @@ def get_data(type):
     return final_data, final_labels
 
 
-# In[ ]:
+# In[5]:
 
 
 import numpy as np
@@ -143,7 +143,7 @@ print(array_3d)
 print(array_1d)
 
 
-# In[ ]:
+# In[6]:
 
 
 x_train, y_train = get_data('train')
@@ -155,7 +155,7 @@ x = np.concatenate((x_train, x_valid), axis=0)
 x = np.concatenate((x, x_test), axis=0)
 
 
-# In[ ]:
+# In[7]:
 
 
 # # Assuming train_data and train_labels are your input data and corresponding labels
@@ -172,7 +172,7 @@ x = np.concatenate((x, x_test), axis=0)
 # y = y[indices]
 
 
-# In[ ]:
+# In[8]:
 
 
 def dataset_info(X, y):
@@ -186,14 +186,14 @@ dataset_info(x_valid, y_valid)
 dataset_info(x_test, y_test)
 
 
-# In[ ]:
+# In[9]:
 
 
 # for i in range(len(y_train)):
 #     print(y_train[i])
 
 
-# In[ ]:
+# In[10]:
 
 
 class EEGDataset(data.Dataset):
@@ -266,13 +266,13 @@ class EEGDataset(data.Dataset):
             raise TypeError("Unknown type of split!")
 
 
-# In[ ]:
+# In[11]:
 
 
 eeg_dataset = EEGDataset(x=x, x_train=x_train, x_valid=x_valid, x_test=x_test, y_train=y_train, y_valid=y_valid, y_test=y_test)
 
 
-# In[ ]:
+# In[12]:
 
 
 # plt.plot(X[18:21, 0, :].T)
@@ -287,7 +287,7 @@ eeg_dataset = EEGDataset(x=x, x_train=x_train, x_valid=x_valid, x_test=x_test, y
 
 # ### **Utils**
 
-# In[ ]:
+# In[13]:
 
 
 class AvgMeter(object):
@@ -312,7 +312,7 @@ class AvgMeter(object):
 
 # ### **Wrapper**
 
-# In[ ]:
+# In[14]:
 
 
 class ModelWrapper(L.LightningModule):
@@ -504,7 +504,7 @@ class ModelWrapper(L.LightningModule):
 
 # ### **EEG Classification Model**
 
-# In[ ]:
+# In[15]:
 
 
 class PositionalEncoding(nn.Module):
@@ -527,7 +527,7 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-# In[ ]:
+# In[16]:
 
 
 class TransformerBlock(nn.Module):
@@ -562,7 +562,7 @@ class TransformerBlock(nn.Module):
         return x
 
 
-# In[ ]:
+# In[17]:
 
 
 class EEGClassificationModel(nn.Module):
@@ -606,14 +606,14 @@ class EEGClassificationModel(nn.Module):
         return x
 
 
-# In[ ]:
+# In[18]:
 
 
 MODEL_NAME = "EEGClassificationModel"
 model = EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125)
 
 
-# In[ ]:
+# In[19]:
 
 
 # import torch
@@ -639,7 +639,7 @@ model = EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125)
 
 # ## **Training**
 
-# In[ ]:
+# In[20]:
 
 
 MAX_EPOCH = 100
@@ -653,17 +653,17 @@ print(f"Random seed: {SEED}")
 
 model_w = ModelWrapper(model, eeg_dataset, BATCH_SIZE, LR, MAX_EPOCH)
 
-# get_ipython().system('rm -rf logs/')
+get_ipython().system('rm -rf logs/')
 
 
-# In[ ]:
+# In[21]:
 
 
 # %reload_ext tensorboard
 # %tensorboard --logdir=logs/lightning_logs/
 
 
-# In[ ]:
+# In[22]:
 
 
 tensorboardlogger = TensorBoardLogger(save_dir="logs/")
@@ -694,13 +694,20 @@ trainer = Trainer(
 )
 
 
-# In[ ]:
+# In[26]:
 
 
-# print('Before', model_w.device)
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# model_w.to(device)
-# print('After', model_w.device)
+torch.backends.mps.is_available()
+
+
+# In[24]:
+
+
+print('Before', model_w.device)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+model_w.to(device)
+print('After', model_w.device)
 
 
 # In[ ]:
@@ -731,7 +738,7 @@ trainer = Trainer(
 # model_w.to(device)
 
 
-# In[ ]:
+# In[25]:
 
 
 trainer.fit(model_w)
@@ -870,12 +877,12 @@ make_confusion_matrix(y_true, y_pred, classes=CLASSES, figsize=(20, 20), text_si
 
 # ### Saving Notebook as a script
 
-# In[1]:
+# In[ ]:
 
 
-# from IPython import get_ipython
-# name = 'final.ipynb'
-# get_ipython().system(f'jupyter nbconvert {name} --to python')
+from IPython import get_ipython
+name = 'final.ipynb'
+get_ipython().system(f'jupyter nbconvert {name} --to python')
 
 
 # In[ ]:
