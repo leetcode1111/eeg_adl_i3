@@ -1,24 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py:light
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
+#       format_name: percent
+#       format_version: '1.3'
 #       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: Python 3
 #     name: python3
 # ---
 
-# + [markdown] id="wBQg-JWsn62k"
+# %% [markdown] id="wBQg-JWsn62k"
 # # **EEG Motor Imagery Classification Using CNN, Transformer, and MLP**
 
-# + [markdown] id="79u6myDWn7zd"
+# %% [markdown] id="79u6myDWn7zd"
 # ## **Important Libraries**
 
-# + id="-zdyP4ntn77B"
+# %% id="-zdyP4ntn77B"
 import mne
 # from mne.io import concatenate_raws
 
@@ -58,10 +58,10 @@ plt.rcParams['axes.facecolor'] = 'lightgray'
 warnings.filterwarnings("ignore")
 print(torch.__version__)
 
-# + [markdown] id="nc-Lunzdn8CT"
+# %% [markdown] id="nc-Lunzdn8CT"
 # ## **Dataset**
 
-# + colab={"base_uri": "https://localhost:8080/"} id="doBae7vpn8IY" outputId="e16f9f35-8caf-4845-b71a-603782058a61"
+# %% colab={"base_uri": "https://localhost:8080/"} id="doBae7vpn8IY" outputId="e16f9f35-8caf-4845-b71a-603782058a61"
 global_path = ''
 dir_path_to_save_data = 'processed_data_original'
 seed_value = 42
@@ -79,7 +79,7 @@ for dir in CLASSES:
     print(f'{dir} has {len(all_files[dir])} files')
 
 
-# +
+# %%
 def read_one_subject_file(file_path, id): # return data in milli volts (input data is in micro volts)
     epochs_eeg = mne.read_epochs(os.path.join(dir_path_to_save_data, file_path))
     # print(np.shape(temp))
@@ -99,8 +99,7 @@ print(np.min(eeg_data), np.max(eeg_data)) # In Old Implimentation ((3377, 64, 49
 eeg_data.dtype
 
 
-# -
-
+# %%
 def get_data(type):
     if type not in ['train', 'valid', 'test']:  
         raise ValueError('type should be either train, valid or test')
@@ -135,7 +134,7 @@ def get_data(type):
     print(c)
     return final_data, final_labels
 
-# +
+# %%
 import numpy as np
 
 # Generate sample data
@@ -145,7 +144,7 @@ array_1d = np.arange(3)  # Example 1D array of shape (8,)
 print(array_3d)
 print(array_1d)
 
-# +
+# %%
 x_train, y_train = get_data('train')
 x_valid, y_valid = get_data('valid')
 x_test, y_test = get_data('test')
@@ -155,7 +154,7 @@ x = np.concatenate((x_train, x_valid), axis=0)
 x = np.concatenate((x, x_test), axis=0)
 
 
-# +
+# %%
 # # Assuming train_data and train_labels are your input data and corresponding labels
 # train_data_shape = X.shape
 
@@ -169,7 +168,7 @@ x = np.concatenate((x, x_test), axis=0)
 # X = X[indices]
 # y = y[indices]
 
-# +
+# %%
 def dataset_info(X, y):
     print(f'Data Shape: {X.shape}, Labels Shape: {y.shape}')
     print(f'Min and Max of Data ({np.min(X)}, {np.max(X)})')
@@ -181,11 +180,11 @@ dataset_info(x_valid, y_valid)
 dataset_info(x_test, y_test)
 
 
-# +
+# %%
 # for i in range(len(y_train)):
 #     print(y_train[i])
 
-# + id="gLp5aVzwA0tO"
+# %% id="gLp5aVzwA0tO"
 class EEGDataset(data.Dataset):
     def __init__(self, x, x_train, x_valid, x_test, y_train=None, y_valid=None, y_test=None, inference=False):
         super().__init__()
@@ -256,11 +255,11 @@ class EEGDataset(data.Dataset):
             raise TypeError("Unknown type of split!")
 
 
-# + id="Q0PANUZsComS"
+# %% id="Q0PANUZsComS"
 eeg_dataset = EEGDataset(x=x, x_train=x_train, x_valid=x_valid, x_test=x_test, y_train=y_train, y_valid=y_valid, y_test=y_test)
 
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 489} id="XgHrQ_Nvie1A" outputId="85e41dc7-42c8-4a49-9551-c0b8552fc6f9"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 489} id="XgHrQ_Nvie1A" outputId="85e41dc7-42c8-4a49-9551-c0b8552fc6f9"
 # plt.plot(X[18:21, 0, :].T)
 # plt.title("Exemplar single-trial epoched data, for electrode 0")
 # plt.ylabel("V")
@@ -268,13 +267,13 @@ eeg_dataset = EEGDataset(x=x, x_train=x_train, x_valid=x_valid, x_test=x_test, y
 # plt.show()
 # plt.clf()
 
-# + [markdown] id="jcjNYuJYn8Ox"
+# %% [markdown] id="jcjNYuJYn8Ox"
 # ## **Model**
 
-# + [markdown] id="NImfOgC4fy3v"
+# %% [markdown] id="NImfOgC4fy3v"
 # ### **Utils**
 
-# + id="DrmSbEY9n8Tg"
+# %% id="DrmSbEY9n8Tg"
 class AvgMeter(object):
     def __init__(self, num=40):
         self.num = num
@@ -295,10 +294,10 @@ class AvgMeter(object):
         return out
 
 
-# + [markdown] id="G6maL6CifzWk"
+# %% [markdown] id="G6maL6CifzWk"
 # ### **Wrapper**
 
-# + id="gdmdnCNcfzdN"
+# %% id="gdmdnCNcfzdN"
 class ModelWrapper(L.LightningModule):
     def __init__(self, arch, dataset, batch_size, lr, max_epoch):
         super().__init__()
@@ -486,10 +485,10 @@ class ModelWrapper(L.LightningModule):
         return [optimizer], [lr_scheduler]
 
 
-# + [markdown] id="zmKcJRmqf3RT"
+# %% [markdown] id="zmKcJRmqf3RT"
 # ### **EEG Classification Model**
 
-# + id="9vZNgUPzPC2g"
+# %% id="9vZNgUPzPC2g"
 class PositionalEncoding(nn.Module):
     """Positional encoding.
     https://d2l.ai/chapter_attention-mechanisms-and-transformers/self-attention-and-positional-encoding.html
@@ -510,7 +509,7 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-# + id="1kuYblfPluNR"
+# %% id="1kuYblfPluNR"
 class TransformerBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, dim_feedforward, dropout=0.1):
         super().__init__()
@@ -543,7 +542,7 @@ class TransformerBlock(nn.Module):
         return x
 
 
-# + id="-Az5aZQcf3Vf"
+# %% id="-Az5aZQcf3Vf"
 class EEGClassificationModel(nn.Module):
     def __init__(self, eeg_channel, dropout=0.1):
         super().__init__()
@@ -585,11 +584,11 @@ class EEGClassificationModel(nn.Module):
         return x
 
 
-# + id="7pqVobuLg8AJ"
+# %% id="7pqVobuLg8AJ"
 MODEL_NAME = "EEGClassificationModel"
 model = EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125)
 
-# +
+# %%
 # import torch
 # from torchviz import make_dot
 
@@ -611,10 +610,10 @@ model = EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125)
 #          show_saved=True).render("MyPyTorchModel_torchviz", format="png")
 
 
-# + [markdown] id="XrT9CzvNn8Zj"
+# %% [markdown] id="XrT9CzvNn8Zj"
 # ## **Training**
 
-# + colab={"base_uri": "https://localhost:8080/"} id="DhXydlHxn8d2" outputId="c81a0aac-2c2a-4459-8d0e-a3b887cedf70"
+# %% colab={"base_uri": "https://localhost:8080/"} id="DhXydlHxn8d2" outputId="c81a0aac-2c2a-4459-8d0e-a3b887cedf70"
 MAX_EPOCH = 100
 BATCH_SIZE = 32
 LR = 5e-4
@@ -658,38 +657,39 @@ trainer = Trainer(
     log_every_n_steps=5,
 )
 
-# -
 
 
+# %%
 print('Before', model_w.device)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 model_w.to(device)
 print('After', model_w.device)
 
+# %% [markdown]
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"  # specify which GPU(s) to be used
 # os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,4"  # specify which GPU(s) to be used
 
 
-# +
+# %%
 # model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=19-step=19020.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 
-# +
+# %%
 # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu") ## specify the GPU id's, GPU id's start from 0.
 # device
 
-# +
+# %%
 # model_w= nn.DataParallel(model_w, device_ids = [1, 3])
 # model_w= nn.parallel.DistributedDataParallel(model_w, device_ids = [1, 3])
 # model_w.to(device)
-# -
 
+# %%
 trainer.fit(model_w)
 
-# + [markdown] id="ljCtuHhvgHVn"
+# %% [markdown] id="ljCtuHhvgHVn"
 # ## **Testing**
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 249, "referenced_widgets": ["1bc5ff501ec5408b9acb21d96a73cdd3", "0037244073884f838214fbd9a8ee9302", "338c2e2598f94e7b9666e65b5511ccb2", "66aeeec34f1a4612a0ff9e6723dbba75", "51599653ba3e4d26985ff39ef0cbc654", "b237ad9bf9574c74a946af74fdb46e7c", "23be9d3ca285471eb783de14b9b60858", "3d44f149623245b0808df6bbf7f8fb72", "94edc4d6045b4e4db459c14729e89e4d", "b76cfb981e9342558774ec9dd10eed59", "eb57eb68021940ca98c7b8ab2b48f4cf"]} id="kwUGPu6tgHbU" outputId="bee03dae-a6eb-46dd-b56a-f92b8537bd2a"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 249, "referenced_widgets": ["1bc5ff501ec5408b9acb21d96a73cdd3", "0037244073884f838214fbd9a8ee9302", "338c2e2598f94e7b9666e65b5511ccb2", "66aeeec34f1a4612a0ff9e6723dbba75", "51599653ba3e4d26985ff39ef0cbc654", "b237ad9bf9574c74a946af74fdb46e7c", "23be9d3ca285471eb783de14b9b60858", "3d44f149623245b0808df6bbf7f8fb72", "94edc4d6045b4e4db459c14729e89e4d", "b76cfb981e9342558774ec9dd10eed59", "eb57eb68021940ca98c7b8ab2b48f4cf"]} id="kwUGPu6tgHbU" outputId="bee03dae-a6eb-46dd-b56a-f92b8537bd2a"
 # trainer.test(ckpt_path="EEGClassificationModel_best.ckpt")
 # trainer.test(model=model_w ,ckpt_path="epoch=6-step=1666.ckpt")
 
@@ -699,10 +699,10 @@ trainer.fit(model_w)
 #     os.path.join(CHECKPOINT_DIR, f"{MODEL_NAME}_best.ckpt")
 # )
 
-# + [markdown] id="nI1f_6OmgMQB"
+# %% [markdown] id="nI1f_6OmgMQB"
 # ## **Inference**
-# -
 
+# %%
 def prediction(sample: np.ndarray, model_wrappr: L.LightningModule) -> list:  #(samples_count, EEG_CHANNEL, Data_Points)
     if(sample.shape == 2):
         sample = np.expand_dims(sample, 0)
@@ -724,7 +724,7 @@ def prediction(sample: np.ndarray, model_wrappr: L.LightningModule) -> list:  #(
     return predicted_class
 
 
-# +
+# %%
 eeg_dataset_test = eeg_dataset.split("test")
 print(np.shape(eeg_dataset_test.dataset['x']))
 # eeg_dataset_test.dataset['x']
@@ -734,10 +734,10 @@ y_true = eeg_dataset_test.dataset['y']
 y_pred = prediction(eeg_dataset_test.dataset['x'], model_w)
 
 
-# -
-
+# %% [markdown]
 # ## **Confusion Matrix**
 
+# %%
 # perital and ocpital channel
 # Note: The following confusion matrix code is a remix of Scikit-Learn's 
 # plot_confusion_matrix function - https://scikit-learn.org/stable/modules/generated/sklearn.metrics.plot_confusion_matrix.html
@@ -805,4 +805,5 @@ def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_s
              size=text_size)
 
 
+# %%
 make_confusion_matrix(y_true, y_pred, classes=CLASSES, figsize=(20, 20), text_size=20)
