@@ -666,11 +666,6 @@ device = torch.device("mps" if torch.backends.mps.is_available() else device.typ
 model_w.to(device)
 print('After', model_w.device)
 
-# %% [markdown]
-# # os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"  # specify which GPU(s) to be used
-#
-
-
 # %%
 # model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=19-step=19020.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 
