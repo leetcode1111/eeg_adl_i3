@@ -35,7 +35,7 @@ from sklearn.metrics import confusion_matrix
 import itertools
 
 # from google.colab.patches import cv2_imshow
-# from cv2_plt_imshow import cv2_plt_imshow as cv2_imshow
+from cv2_plt_imshow import cv2_plt_imshow as cv2_imshow
 
 import torch
 import torch.nn as nn
@@ -414,7 +414,7 @@ class ModelWrapper(L.LightningModule):
 
     def on_train_end(self):
         # Loss 
-        loss_img_file = "loss_plot.png"
+        loss_img_file = "content/loss_plot.png"
         plt.plot(self.train_loss, color = 'r', label='train')
         plt.plot(self.val_loss, color = 'b', label='validation')
         plt.title("Loss Curves")
@@ -424,12 +424,12 @@ class ModelWrapper(L.LightningModule):
         plt.grid()
         plt.savefig(loss_img_file)
         plt.clf()
-        # img = cv2.imread(loss_img_file)
-        # cv2_imshow(img)
+        img = cv2.imread(loss_img_file)
+        cv2_imshow(img)
         plt.show()
 
         # Accuracy
-        acc_img_file = "acc_plot.png"
+        acc_img_file = "content/acc_plot.png"
         plt.plot(self.train_acc, color = 'r', label='train')
         plt.plot(self.val_acc, color = 'b', label='validation')
         plt.title("Accuracy Curves")
@@ -439,8 +439,8 @@ class ModelWrapper(L.LightningModule):
         plt.grid()
         plt.savefig(acc_img_file)
         plt.clf()
-        # img = cv2.imread(acc_img_file)
-        # cv2_imshow(img)
+        img = cv2.imread(acc_img_file)
+        cv2_imshow(img)
         plt.show()
 
     def train_dataloader(self):
@@ -662,13 +662,13 @@ trainer = Trainer(
 # %%
 print('Before', model_w.device)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else device.type)
 model_w.to(device)
 print('After', model_w.device)
 
 # %% [markdown]
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"  # specify which GPU(s) to be used
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,4"  # specify which GPU(s) to be used
+# # os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"  # specify which GPU(s) to be used
+#
 
 
 # %%
