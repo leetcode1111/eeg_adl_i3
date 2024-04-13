@@ -81,7 +81,7 @@ for dir in CLASSES:
 
 # %%
 def read_one_subject_file(file_path, id): # return data in milli volts (input data is in micro volts)
-    epochs_eeg = mne.read_epochs(os.path.join(dir_path_to_save_data, file_path))
+    epochs_eeg = mne.read_epochs(os.path.join(dir_path_to_save_data, file_path), verbose=False)
     # print(np.shape(temp))
     eeg_data = epochs_eeg.get_data(copy=False) * 1e-3
     eeg_data = np.array(eeg_data, dtype=np.float32) 
@@ -414,7 +414,7 @@ class ModelWrapper(L.LightningModule):
 
     def on_train_end(self):
         # Loss 
-        loss_img_file = "content/loss_plot.png"
+        loss_img_file = "loss_plot.png"
         plt.plot(self.train_loss, color = 'r', label='train')
         plt.plot(self.val_loss, color = 'b', label='validation')
         plt.title("Loss Curves")
@@ -429,7 +429,7 @@ class ModelWrapper(L.LightningModule):
         plt.show()
 
         # Accuracy
-        acc_img_file = "content/acc_plot.png"
+        acc_img_file = "acc_plot.png"
         plt.plot(self.train_acc, color = 'r', label='train')
         plt.plot(self.val_acc, color = 'b', label='validation')
         plt.title("Accuracy Curves")
@@ -660,11 +660,11 @@ trainer = Trainer(
 
 
 # %%
-print('Before', model_w.device)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("mps" if torch.backends.mps.is_available() else device.type)
-model_w.to(device)
-print('After', model_w.device)
+# print('Before', model_w.device)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("mps" if torch.backends.mps.is_available() else device.type)
+# model_w.to(device)
+# print('After', model_w.device)
 
 # %%
 # model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=19-step=19020.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
