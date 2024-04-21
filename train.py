@@ -335,6 +335,9 @@ class ModelWrapper(L.LightningModule):
     def forward(self, x):
         return self.arch(x)
 
+    def embeddings_after_tf(self, x):
+        return self.arch.embeddings_after_tf(x)
+
     def training_step(self, batch, batch_nb):
         x, y = batch
         y=y.to(torch.int64)
@@ -582,6 +585,13 @@ class EEGClassificationModel(nn.Module):
         x = x.mean(dim=-1)
         x = self.mlp(x)
         return x
+    def embeddings_after_tf(self, x):
+        x = self.conv(x)
+        x = x.permute(0, 2, 1)
+        x = self.transformer(x)
+        x = x.permute(0, 2, 1)
+        x = x.mean(dim=-1)
+        return x
 
 
 # %% id="7pqVobuLg8AJ"
@@ -667,7 +677,8 @@ trainer = Trainer(
 # print('After', model_w.device)
 
 # %%
-# model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=19-step=19020.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
+# model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=499-step=119000.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
+model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="4_class/epoch=99-step=14595.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 
 # %%
 # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu") ## specify the GPU id's, GPU id's start from 0.
@@ -679,7 +690,7 @@ trainer = Trainer(
 # model_w.to(device)
 
 # %%
-trainer.fit(model_w)
+# trainer.fit(model_w)
 
 # %% [markdown] id="ljCtuHhvgHVn"
 # ## **Testing**
@@ -720,7 +731,7 @@ def prediction(sample: np.ndarray, model_wrappr: L.LightningModule) -> list:  #(
 
 
 # %%
-eeg_dataset_test = eeg_dataset.split("test")
+eeg_dataset_test = eeg_dataset.split("val")
 print(np.shape(eeg_dataset_test.dataset['x']))
 # eeg_dataset_test.dataset['x']
 # eeg_dataset_test.dataset['y']
@@ -802,3 +813,45 @@ def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_s
 
 # %%
 make_confusion_matrix(y_true, y_pred, classes=CLASSES, figsize=(20, 20), text_size=20)
+
+# %%
+eeg_dataset_test = eeg_dataset.split("val")
+x = eeg_dataset_test.dataset['x']
+x = x
+x = torch.tensor(x)
+labels = eeg_dataset_test.dataset['y']
+labels = labels
+# labels = torch.tensor(labels)
+print(x.shape)
+print(labels)
+
+# %%
+embeddings = model_w.embeddings_after_tf(x)
+embeddings = embeddings.detach().numpy()
+embeddings.shape, labels.shape
+
+# %%
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+
+CLASSES = ['left_fist', 'right_fist', 'baseline_open', 'both_feet']
+
+def plot_tsne(embeddings, labels):
+    # Initialize t-SNE with 2 components (for 2D visualization)
+    tsne = TSNE(n_components=2, perplexity = 9, random_state=42)
+    # Fit t-SNE on embeddings
+    embeddings_tsne = tsne.fit_transform(embeddings)
+    # Create scatter plot
+    plt.figure(figsize=(8, 6))
+    for label in np.unique(labels):
+        indices = np.where(labels == label)
+        plt.scatter(embeddings_tsne[indices, 0], embeddings_tsne[indices, 1], label=CLASSES[label])
+    plt.title('t-SNE Plot')
+    plt.xlabel('t-SNE Dimension 1')
+    plt.ylabel('t-SNE Dimension 2')
+    plt.legend()
+    plt.savefig('tsne')
+    plt.show()
+  
+plot_tsne(embeddings, labels)
