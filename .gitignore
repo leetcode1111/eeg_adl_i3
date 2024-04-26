@@ -8,3 +8,6 @@ temp/
 processed_data_original/
 train.ipynb
 epoch=499-step=119000.ckpt
+filtered_data.zip
+filtered_data/
+output.txt
