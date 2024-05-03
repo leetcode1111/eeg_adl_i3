@@ -11,3 +11,6 @@ epoch=499-step=119000.ckpt
 filtered_data.zip
 filtered_data/
 output.txt
+generated_data_converted
+generated_data_converted.zip
+processed_data_original_and_generated/

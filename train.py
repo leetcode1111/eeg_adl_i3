@@ -31,7 +31,7 @@ import cv2
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score
 import itertools
 
 # from google.colab.patches import cv2_imshow
@@ -63,7 +63,7 @@ print(torch.__version__)
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="doBae7vpn8IY" outputId="e16f9f35-8caf-4845-b71a-603782058a61"
 global_path = ''
-dir_path_to_save_data = 'filtered_data'
+dir_path_to_save_data = 'processed_data_original_and_generated'
 seed_value = 42
 
 
@@ -107,24 +107,32 @@ def get_data(type):
     dataset = list()
     labels = list()
     c=0
+    g=0
     for dir in CLASSES:
         for file_name in all_files[dir]:
             c+=1
-            num = int(file_name.split('-')[0])
             file_path = os.path.join(dir, file_name)
             id = CLASSES_ID[dir]
             eeg_data, one_action_labels = read_one_subject_file(file_path, id)
-            if(type == 'train' and  num < 88):
-                dataset.append(eeg_data)
-                labels.append(one_action_labels)
+            if(file_name.startswith('gen')):
+                num = int(file_name.split('_')[1])
+                if(type == 'train' and  num <= 22):
+                    g+=1
+                    dataset.append(eeg_data)
+                    labels.append(one_action_labels)
+            else:
+                num = int(file_name.split('-')[0])
+                if(type == 'train' and  num < 88):
+                    dataset.append(eeg_data)
+                    labels.append(one_action_labels)
 
-            elif(type == 'valid' and  num >= 88 and num<98):
-                dataset.append(eeg_data)
-                labels.append(one_action_labels)
+                elif(type == 'valid' and  num >= 88 and num<98):
+                    dataset.append(eeg_data)
+                    labels.append(one_action_labels)
 
-            elif(type == 'test' and num >= 98):
-                dataset.append(eeg_data)
-                labels.append(one_action_labels)
+                elif(type == 'test' and num >= 98):
+                    dataset.append(eeg_data)
+                    labels.append(one_action_labels)
 
 
     final_data = np.vstack(dataset)
@@ -132,6 +140,7 @@ def get_data(type):
     final_labels = np.squeeze(np.vstack(labels))
 
     print(c)
+    print(g)
     return final_data, final_labels
 
 # %%
@@ -661,8 +670,6 @@ trainer = Trainer(
     # log_every_n_steps=5,
 )
 
-
-
 # %%
 # print('Before', model_w.device)
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -671,7 +678,7 @@ trainer = Trainer(
 # print('After', model_w.device)
 
 # %%
-# model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=3-step=952.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
+# model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=499-step=119000.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 # model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=499-step=119000.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 # model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="4_class/epoch=99-step=14595.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 
@@ -808,6 +815,7 @@ def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_s
 
 
 # %%
+print(accuracy_score(y_true, y_pred))
 make_confusion_matrix(y_true, y_pred, classes=CLASSES, figsize=(20, 20), text_size=20)
 
 # %%
