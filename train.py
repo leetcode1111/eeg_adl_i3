@@ -63,7 +63,7 @@ print(torch.__version__)
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="doBae7vpn8IY" outputId="e16f9f35-8caf-4845-b71a-603782058a61"
 global_path = ''
-dir_path_to_save_data = 'processed_data_original'
+dir_path_to_save_data = 'filtered_data'
 seed_value = 42
 
 
@@ -427,9 +427,6 @@ class ModelWrapper(L.LightningModule):
         plt.grid()
         plt.savefig(loss_img_file)
         plt.clf()
-        img = cv2.imread(loss_img_file)
-        cv2_imshow(img)
-        plt.show()
 
         # Accuracy
         acc_img_file = "acc_plot.png"
@@ -442,9 +439,6 @@ class ModelWrapper(L.LightningModule):
         plt.grid()
         plt.savefig(acc_img_file)
         plt.clf()
-        img = cv2.imread(acc_img_file)
-        cv2_imshow(img)
-        plt.show()
 
     def train_dataloader(self):
         return data.DataLoader(
@@ -624,7 +618,7 @@ model = EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125)
 # ## **Training**
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="DhXydlHxn8d2" outputId="c81a0aac-2c2a-4459-8d0e-a3b887cedf70"
-MAX_EPOCH = 100
+MAX_EPOCH = 500
 BATCH_SIZE = 32
 LR = 5e-4
 CHECKPOINT_DIR = os.getcwd()
@@ -642,11 +636,12 @@ model_w = ModelWrapper(model, eeg_dataset, BATCH_SIZE, LR, MAX_EPOCH)
 
 tensorboardlogger = TensorBoardLogger(save_dir="logs/")
 csvlogger = CSVLogger(save_dir="logs/")
-lr_monitor = LearningRateMonitor(logging_interval='step')
+lr_monitor = LearningRateMonitor(logging_interval=None)
 checkpoint = ModelCheckpoint(
     monitor='val_acc',
     dirpath=CHECKPOINT_DIR,
     mode='max',
+    save_weights_only=True,
 )
 
 # early_stopping = EarlyStopping(
@@ -659,12 +654,11 @@ seed_everything(SEED, workers=True)
 
 trainer = Trainer(
     accelerator="auto",
-    devices=1,
     max_epochs=MAX_EPOCH,
     logger=[tensorboardlogger, csvlogger],
     # callbacks=[lr_monitor, checkpoint, early_stopping],
     callbacks=[lr_monitor, checkpoint], # exp
-    log_every_n_steps=5,
+    # log_every_n_steps=5,
 )
 
 
@@ -677,8 +671,9 @@ trainer = Trainer(
 # print('After', model_w.device)
 
 # %%
+# model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=3-step=952.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 # model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="epoch=499-step=119000.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
-model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="4_class/epoch=99-step=14595.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
+# model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="4_class/epoch=99-step=14595.ckpt", arch=EEGClassificationModel(eeg_channel=EEG_CHANNEL, dropout=0.125), dataset=eeg_dataset, batch_size=BATCH_SIZE, lr=LR, max_epoch=MAX_EPOCH)
 
 # %%
 # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu") ## specify the GPU id's, GPU id's start from 0.
@@ -690,7 +685,7 @@ model_w = ModelWrapper.load_from_checkpoint(checkpoint_path="4_class/epoch=99-st
 # model_w.to(device)
 
 # %%
-# trainer.fit(model_w)
+trainer.fit(model_w)
 
 # %% [markdown] id="ljCtuHhvgHVn"
 # ## **Testing**
@@ -809,6 +804,7 @@ def make_confusion_matrix(y_true, y_pred, classes=None, figsize=(10, 10), text_s
              horizontalalignment="center",
              color="white" if cm[i, j] > threshold else "black",
              size=text_size)
+  plt.savefig('confusion_matrix.png')
 
 
 # %%
@@ -828,7 +824,7 @@ print(labels)
 # %%
 embeddings = model_w.embeddings_after_tf(x)
 embeddings = embeddings.detach().numpy()
-embeddings.shape, labels.shape
+print(embeddings.shape, labels.shape)
 
 # %%
 import numpy as np
